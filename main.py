@@ -117,30 +117,25 @@ class 竹影:
             messagebox.showwarning("警告", "未选择任何文件")
 
     def main_window(self) -> None:
-        # 创建主框架
         main_frame: ttk.Frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # 创建文件选择区域
         filename_frame: ttk.Frame = ttk.Frame(main_frame)
         filename_frame.pack(fill=tk.X, pady=(0, 10))
         filename_label: ttk.Label = ttk.Label(filename_frame, text="文件名:")
         filename_label.pack(side=tk.LEFT)
 
-        # 创建文件路径输入框
         self.filename_entry = ttk.Entry(filename_frame)
         self.filename_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
-        # 创建文件选择按钮
         select_btn: ttk.Button = ttk.Button(
             filename_frame,
             text="选择文件",
             command=self.select_file,
-            width=15,  # 设置按钮宽度
+            width=15,
         )
         select_btn.pack(side=tk.LEFT, padx=(5, 0), pady=5)
 
-        # 创建中间区域框架
         middle_frame: ttk.Frame = ttk.Frame(main_frame)
         middle_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
@@ -148,62 +143,41 @@ class 竹影:
         video_frame: ttk.LabelFrame = ttk.LabelFrame(middle_frame, text="视频")
         video_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
-        # 创建视频显示标签
+        # 添加视频标签用于显示视频
         self.video_label = ttk.Label(video_frame)
         self.video_label.pack(fill=tk.BOTH, expand=True)
 
-        # 创建视频控制按钮区域
+        # 添加视频控制按钮
         video_controls = ttk.Frame(video_frame)
         video_controls.pack(fill=tk.X, pady=5)
 
-        # 创建播放/暂停按钮
         self.play_btn = ttk.Button(
-            video_controls,
-            text="播放",
-            command=self.toggle_play,
-            width=15,  # 设置按钮宽度
+            video_controls, text="播放", command=self.toggle_play, width=15
         )
         self.play_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
-        # 创建停止按钮
         self.stop_btn = ttk.Button(
-            video_controls,
-            text="停止",
-            command=self.stop_video,
-            width=15,  # 设置按钮宽度
+            video_controls, text="停止", command=self.stop_video, width=15
         )
         self.stop_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
-        # 创建转录区域
         transcribe_frame: ttk.LabelFrame = ttk.LabelFrame(middle_frame, text="转录")
         transcribe_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
         transcribe_text: tk.Text = tk.Text(transcribe_frame, height=10)
         transcribe_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 创建输出区域
         output_frame: ttk.LabelFrame = ttk.LabelFrame(main_frame, text="输出")
         output_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         output_text: tk.Text = tk.Text(output_frame, height=8)
         output_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 创建底部按钮区域
         button_frame: ttk.Frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X)
 
-        # 创建导出按钮
-        export_btn: ttk.Button = ttk.Button(
-            button_frame,
-            text="导出",
-            width=15,  # 设置按钮宽度
-        )
+        export_btn: ttk.Button = ttk.Button(button_frame, text="导出", width=15)
         export_btn.pack(side=tk.LEFT, padx=(0, 5), pady=5)
 
-        # 创建重置按钮
-        reset_btn: ttk.Button = ttk.Button(
-            button_frame,
-            text="重置",
-            width=15,  # 设置按钮宽度
-        )
+        reset_btn: ttk.Button = ttk.Button(button_frame, text="重置", width=15)
         reset_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
         return self.root.mainloop()
