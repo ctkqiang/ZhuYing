@@ -27,7 +27,7 @@ class 竹影:
         self.作者网址: str = "https://ctkqiang.xin"
         self.描述: str = "竹影"
         self.默认语言: str = "zh"
-        self.支持语言: list = ["zh", "en", "de", "fr", "ru", "ko", "ja"]
+        self.支持语言: list = ["zh", "en", "de"]
 
         # 初始化主窗口和组件
         self.根窗口: tk.Tk = tk.Tk()
@@ -60,24 +60,66 @@ class 竹影:
 
         # 设置菜单栏
         self.菜单栏: tk.Menu = tk.Menu(self.根窗口)
+        # 将菜单栏配置到主窗口
         self.根窗口.config(menu=self.菜单栏)
 
-        # 设置文件菜单
+        # 创建文件菜单
         文件菜单: tk.Menu = tk.Menu(self.菜单栏, tearoff=0)
+        # 添加文件菜单到菜单栏
+
         self.菜单栏.add_cascade(label="文件", menu=文件菜单)
+        # 添加文件菜单项
         文件菜单.add_command(label="打开文件", command=self.选择文件)
         文件菜单.add_separator()  # 添加分隔线
         文件菜单.add_command(label="退出程序", command=self.根窗口.quit)
 
-        # 设置编辑菜单
+        # 创建编辑菜单
         编辑菜单: tk.Menu = tk.Menu(self.菜单栏, tearoff=0)
+        # 添加编辑菜单到菜单栏
         self.菜单栏.add_cascade(label="编辑", menu=编辑菜单)
+        # 添加编辑菜单项
         编辑菜单.add_command(
             label="清除内容",
             command=lambda: (
                 self.文件名输入框.delete(0, tk.END) if self.文件名输入框 else None
             ),
         )
+        编辑菜单.add_separator()  # 添加分隔线
+        编辑菜单.add_command(label="清除缓存", command=self.清除缓存)
+
+        # 创建帮助菜单
+        关于菜单: tk.Menu = tk.Menu(self.菜单栏, tearoff=0)
+        # 添加帮助菜单到菜单栏
+        self.菜单栏.add_cascade(label="帮助", menu=关于菜单)
+        # 添加帮助菜单项
+        关于菜单.add_command(label="使用说明", command=self.显示帮助)
+        关于菜单.add_separator()  # 添加分隔线
+        关于菜单.add_command(label="检查更新", command=self.检查更新)
+        关于菜单.add_separator()  # 添加分隔线
+        关于菜单.add_command(label=f"关于{self.名称}", command=self.显示关于)
+
+    def 清除缓存(self) -> None:
+        try:
+            临时目录 = "output/temp"
+            翻译目录 = "output/translated"
+
+            os.system("rm -rf output/temp")
+            os.system("rm -rf output/translated")
+            os.system("rm -rf log")
+
+            for 目录 in [临时目录, 翻译目录]:
+                if os.path.exists(目录):
+                    for 文件 in os.listdir(目录):
+                        文件路径 = os.path.join(目录, 文件)
+                        try:
+                            if os.path.isfile(文件路径):
+                                os.unlink(文件路径)
+                        except Exception as e:
+                            print(f"删除文件失败 {文件路径}: {e}")
+
+            messagebox.showinfo("成功", "缓存清除完成")
+        except Exception as e:
+            messagebox.showerror("错误", f"清除缓存失败：{str(e)}")
 
         # 设置关于菜单
         关于菜单: tk.Menu = tk.Menu(self.菜单栏, tearoff=0)
@@ -266,7 +308,7 @@ class 竹影:
 
         输出框架: ttk.LabelFrame = ttk.LabelFrame(主框架, text="输出")
         输出框架.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        self.输出文本: tk.Text = tk.Text(输出框架, height=8)
+        self.输出文本: tk.Text = tk.Text(输出框架, height=8, font=(None, 20))
         self.输出文本.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         按钮框架: ttk.Frame = ttk.Frame(主框架)
@@ -285,7 +327,7 @@ class 竹影:
     def 保存翻译结果(self, 文本: str, 源语言: str, 目标语言: str) -> None:
         try:
             # 创建输出目录
-            输出目录 = "../output/translated"
+            输出目录 = "output/translated"
             os.makedirs(输出目录, exist_ok=True)
 
             # 生成文件名
@@ -296,7 +338,7 @@ class 竹影:
             with open(文件路径, "w", encoding="utf-8") as f:
                 f.write(文本)
 
-            messagebox.showinfo("成功", f"翻译结果已保存至：\n{文件路径}")
+            print("成功", f"翻译结果已保存至：\n{文件路径}")
         except Exception as e:
             messagebox.showerror("错误", f"保存失败：{str(e)}")
 
@@ -312,15 +354,41 @@ class 竹影:
             return
 
         try:
+            # 显示进度条
+            self.进度条["value"] = 0
+            self.状态标签["text"] = "正在翻译..."
+            self.根窗口.update()
+
             目标语言 = self.语言选择.get()
-            # 修改翻译方法调用
+
+            # 更新进度
+            self.进度条["value"] = 30
+            self.状态标签["text"] = "翻译中..."
+            self.根窗口.update()
+
+            # 执行翻译
             翻译结果 = 翻译器.翻译(
                 self.翻译器实例, 文本=源文本, 源语言="zh", 目标语言=目标语言
             )
+
+            # 更新进度
+            self.进度条["value"] = 70
+            self.状态标签["text"] = "正在保存..."
+            self.根窗口.update()
+
+            # 更新界面
             self.输出文本.delete("1.0", tk.END)
             self.输出文本.insert(tk.END, 翻译结果)
             self.保存翻译结果(翻译结果, "zh", 目标语言)
+
+            # 完成
+            self.进度条["value"] = 100
+            self.状态标签["text"] = "翻译完成"
+            self.根窗口.update()
+
         except Exception as e:
+            self.进度条["value"] = 0
+            self.状态标签["text"] = "翻译失败"
             messagebox.showerror("错误", f"翻译失败：{str(e)}")
 
     def 播放视频(self, 视频路径: str) -> None:
