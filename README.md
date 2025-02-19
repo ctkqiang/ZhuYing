@@ -69,7 +69,21 @@ python3 main.py
 ![技术架构图](assets/算法.png)
 
 ### 演示
-<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=114031868252105&bvid=BV1hqAjeYEJG&cid=28478998743&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
+
+<div align="center" style="margin: 20px 0">
+    <iframe 
+        src="//player.bilibili.com/player.html?isOutside=true&aid=114031868252105&bvid=BV1hqAjeYEJG&cid=28478998743&p=1" 
+        scrolling="no" 
+        border="0" 
+        frameborder="no" 
+        framespacing="0" 
+        allowfullscreen="true"
+        width="800"
+        height="600">
+    </iframe>
+</div>
+
+> 🎬 [在 Bilibili 观看完整视频](https://www.bilibili.com/video/BV1hqAjeYEJG)
 
 
 ## 技术细节
