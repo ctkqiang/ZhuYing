@@ -28,3 +28,49 @@ class 数据库处理器:
         finally:
             self.游标.close()
             self.数据库.close()
+
+    def 保存视频记录(self, 文件名: str, 文件路径: str, 转录文本: str = None) -> bool:
+        try:
+            self.游标.execute(
+                f"""
+                INSERT INTO {self.表名} (文件名, 文件路径, 转录文本)
+                VALUES (?, ?, ?)
+                """,
+                (文件名, 文件路径, 转录文本),
+            )
+            self.数据库.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"保存记录失败: {e}")
+            return False
+
+    def 获取视频记录(self, 文件路径: str = None) -> list:
+        try:
+            if 文件路径:
+                self.游标.execute(
+                    f"SELECT * FROM {self.表名} WHERE 文件路径 = ?", (文件路径,)
+                )
+                return self.游标.fetchone()
+            else:
+                self.游标.execute(f"SELECT * FROM {self.表名}")
+                return self.游标.fetchall()
+        except sqlite3.Error as e:
+            print(f"获取记录失败: {e}")
+            return []
+
+    def 更新转录文本(self, 文件路径: str, 转录文本: str) -> bool:
+        """更新视频的转录文本"""
+        try:
+            self.游标.execute(
+                f"""
+                UPDATE {self.表名}
+                SET 转录文本 = ?
+                WHERE 文件路径 = ?
+                """,
+                (转录文本, 文件路径),
+            )
+            self.数据库.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"更新转录文本失败: {e}")
+            return False

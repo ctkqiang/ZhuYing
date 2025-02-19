@@ -9,6 +9,7 @@ from typing import Tuple, Optional
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from src.video_processing import 视频处理器
+from src.database_handler import 数据库处理器
 
 
 class 竹影:
@@ -125,10 +126,47 @@ class 竹影:
             self.文件名输入框.insert(0, 文件名)
             self.当前视频 = 文件名
             self.显示视频缩略图(文件名)
-            # Initialize video processor when file is selected
             self.视频处理器 = 视频处理器(视频路径=文件名)
+
+            现有记录 = self.数据库.获取视频记录(文件路径=文件名)
+            if 现有记录:
+                _, _, _, 已有转录 = 现有记录
+                if 已有转录:
+                    self.转录文本.delete("1.0", tk.END)
+                    self.转录文本.insert(tk.END, 已有转录)
+                    self.状态标签["text"] = "已加载现有转录"
         else:
             messagebox.showwarning("警告", "未选择任何文件")
+
+    def 更新转录结果(self, 结果: str) -> None:
+
+        self.转录文本.delete("1.0", tk.END)
+        self.转录文本.insert(tk.END, 结果)
+
+        if hasattr(self, "当前视频"):
+            文件名 = os.path.basename(self.当前视频)
+            现有记录 = self.数据库.获取视频记录(文件路径=self.当前视频)
+
+            if 现有记录:
+                self.数据库.更新转录文本(self.当前视频, 结果)
+            else:
+                self.数据库.保存视频记录(
+                    文件名=文件名, 文件路径=self.当前视频, 转录文本=结果
+                )
+
+    def 关闭时(self) -> None:
+        # 如果对象有"视频捕获"属性
+        if hasattr(self, "视频捕获"):
+            self.视频捕获.release()
+            # 释放视频捕获资源
+            self.视频捕获.release()
+
+        # 如果对象有"数据库"属性
+        if hasattr(self, "数据库"):
+            self.根窗口.quit()
+            del self.数据库
+
+        # 关闭根窗口
 
     def 主窗口(self) -> None:
         主框架: ttk.Frame = ttk.Frame(self.根窗口)
