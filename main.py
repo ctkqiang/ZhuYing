@@ -19,6 +19,8 @@ class 竹影:
     def __init__(self) -> None:
         super(竹影, self).__init__()
 
+        os.makedirs("log", exist_ok=True)
+
         # 设置应用程序基本信息
         self.名称: str = "竹影"
         self.版本: str = "1.0.0"
@@ -315,7 +317,7 @@ class 竹影:
         按钮框架.pack(fill=tk.X)
 
         导出按钮: ttk.Button = ttk.Button(
-            按钮框架, text="导出", width=15, command=self.执行翻译
+            按钮框架, text="导出", width=15, command=self.导出视频
         )
         导出按钮.pack(side=tk.LEFT, padx=(0, 5), pady=5)
 
@@ -390,6 +392,170 @@ class 竹影:
             self.进度条["value"] = 0
             self.状态标签["text"] = "翻译失败"
             messagebox.showerror("错误", f"翻译失败：{str(e)}")
+
+    def 播放视频(self, 视频路径: str) -> None:
+        self.视频捕获 = cv2.VideoCapture(视频路径)
+
+        def 更新帧() -> None:
+            while True and hasattr(self, "正在播放") and self.正在播放:
+                ret, frame = self.视频捕获.read()
+                if ret:
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame_rgb = cv2.resize(frame_rgb, (270, 480))
+                    photo = ImageTk.PhotoImage(image=Image.fromarray(frame_rgb))
+                    self.视频标签.configure(image=photo)
+                    self.视频标签.image = photo
+                    self.根窗口.after(30)
+                else:
+                    self.视频捕获.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+        self.视频线程 = threading.Thread(target=更新帧, daemon=True)
+        self.视频线程.start()
+
+    def 切换播放(self) -> None:
+        if hasattr(self, "正在播放") and self.正在播放:
+            self.正在播放 = False
+            self.播放按钮.configure(text="播放")
+            if hasattr(self, "视频捕获"):
+                self.视频捕获.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset video position
+        else:
+            self.正在播放 = True
+            self.播放按钮.configure(text="暂停")
+            if hasattr(self, "当前视频"):
+                self.播放视频(self.当前视频)
+
+    @staticmethod
+    def 语言变更处理(事件: str) -> None:
+        print(f"已切换语言: {事件.widget.get()}")
+
+    def 停止视频(self) -> None:
+        try:
+            self.正在播放 = False
+            if hasattr(self, "视频捕获") and self.视频捕获 is not None:
+                self.视频捕获.release()
+                self.视频捕获 = None
+            if hasattr(self, "当前视频"):
+                self.显示视频缩略图(self.当前视频)
+            self.播放按钮.configure(text="播放")
+        except Exception as e:
+            print(f"Error stopping video: {e}")
+
+    def 显示视频缩略图(self, 视频路径: str) -> None:
+        # 获取视频第一帧作为缩略图
+        cap = cv2.VideoCapture(视频路径)
+        ret, frame = cap.read()
+
+        if ret:
+            # 转换并调整图像大小为垂直格式
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cv2.resize(frame_rgb, (270, 480))  # 调整为更小的固定尺寸
+            photo = ImageTk.PhotoImage(image=Image.fromarray(frame_rgb))
+
+            # 显示缩略图
+            self.视频标签.configure(image=photo)
+            self.视频标签.image = photo
+        cap.release()
+
+    def 开始转录(self) -> None:
+        """执行视频转录"""
+        if not hasattr(self, "当前视频") or not self.当前视频:
+            messagebox.showwarning("警告", "请先选择视频文件")
+            return
+
+        try:
+            self.转录文本.delete("1.0", tk.END)
+            self.转录文本.insert(tk.END, "正在转录中...\n")
+            self.转录文本.update()
+
+            # Reset progress bar
+            self.进度条["value"] = 0
+            self.状态标签["text"] = "正在准备转录..."
+
+            def 更新进度(阶段: str, 进度: int):
+                self.进度条["value"] = 进度
+                self.状态标签["text"] = f"{阶段} - {进度}%"
+                self.根窗口.update()
+
+            def 执行转录任务():
+                try:
+                    更新进度("正在提取音频", 10)
+                    音频路径 = self.视频处理器.提取音频()
+
+                    更新进度("正在加载模型", 30)
+                    更新进度("正在转录音频", 50)
+                    结果 = self.视频处理器.执行转录(保留音频=False)
+
+                    更新进度("处理完成", 100)
+                    self.根窗口.after(0, self.更新转录结果, 结果)
+
+                except Exception as e:
+                    self.根窗口.after(0, self.显示错误, str(e))
+
+            threading.Thread(target=执行转录任务, daemon=True).start()
+
+        except Exception as e:
+            messagebox.showerror("错误", f"转录失败: {str(e)}")
+
+    def 更新转录结果(self, 结果: str) -> None:
+        """更新转录结果到界面"""
+        self.转录文本.delete("1.0", tk.END)
+        self.转录文本.insert(tk.END, 结果)
+
+    def 显示错误(self, 错误信息: str) -> None:
+        """显示错误信息"""
+        self.转录文本.delete("1.0", tk.END)
+        self.转录文本.insert(tk.END, f"转录失败: {错误信息}")
+
+    def 导出视频(self) -> None:
+        """将翻译后的文本转换为语音并合成到视频中"""
+        if not hasattr(self, "当前视频") or not self.当前视频:
+            messagebox.showwarning("警告", "请先选择视频文件")
+            return
+
+        翻译文本 = self.输出文本.get("1.0", tk.END).strip()
+        if not 翻译文本:
+            messagebox.showwarning("警告", "没有可导出的翻译内容")
+            return
+
+        try:
+            # 更新进度条
+            self.进度条["value"] = 0
+            self.状态标签["text"] = "正在生成语音..."
+            self.根窗口.update()
+
+            目标语言 = self.语言选择.get()
+            输出目录 = os.path.join(os.path.expanduser("~"), "Desktop", "竹影导出")
+            os.makedirs(输出目录, exist_ok=True)
+
+            # 生成输出文件名
+            输出文件名 = f"{os.path.splitext(os.path.basename(self.当前视频))[0]}_{目标语言}_dubbed.mp4"
+            输出路径 = os.path.join(输出目录, 输出文件名)
+
+            # 生成语音文件
+            self.进度条["value"] = 30
+            self.状态标签["text"] = "正在合成音频..."
+            self.根窗口.update()
+
+            音频路径 = self.视频处理器.文本转语音(翻译文本, 目标语言)
+
+            # 合并视频和音频
+            self.进度条["value"] = 60
+            self.状态标签["text"] = "正在合成视频..."
+            self.根窗口.update()
+
+            self.视频处理器.合并视频音频(self.当前视频, 音频路径, 输出路径)
+
+            # 完成
+            self.进度条["value"] = 100
+            self.状态标签["text"] = "导出完成"
+            self.根窗口.update()
+
+            messagebox.showinfo("成功", f"视频已导出至：\n{输出路径}")
+
+        except Exception as e:
+            self.进度条["value"] = 0
+            self.状态标签["text"] = "导出失败"
+            messagebox.showerror("错误", f"导出失败：{str(e)}")
 
     def 播放视频(self, 视频路径: str) -> None:
         self.视频捕获 = cv2.VideoCapture(视频路径)

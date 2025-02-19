@@ -8,9 +8,11 @@ import whisper
 import tempfile
 import logging
 import subprocess
+import speech_recognition as sr
 from typing import Optional, Tuple
 from pathlib import Path
-import speech_recognition as sr
+from gtts import gTTS
+
 
 # 配置日志
 logging.basicConfig(
@@ -185,3 +187,48 @@ class 视频处理器:
                     self.logger.info("[v] 已清理临时音频文件")
                 except Exception as e:
                     self.logger.warning(f"[x] 清理文件失败: {str(e)}")
+
+    def 文本转语音(self, 文本: str, 语言: str) -> str:
+        # 创建临时目录
+        临时目录 = "output/temp"
+        os.makedirs(临时目录, exist_ok=True)
+
+        # 生成临时音频文件路径
+        音频路径 = os.path.join(临时目录, "tts_output.mp3")
+
+        # 生成语音
+        tts = gTTS(text=文本, lang=语言)
+        tts.save(音频路径)
+
+        return 音频路径
+
+    def 合并视频音频(self, 视频路径: str, 音频路径: str, 输出路径: str) -> None:
+        try:
+            # 使用 FFmpeg 合并视频和音频
+            ffmpeg_cmd = [
+                "ffmpeg",
+                "-i",
+                str(视频路径),
+                "-i",
+                str(音频路径),
+                "-c:v",
+                "copy",  # 复制视频流，不重新编码
+                "-c:a",
+                "aac",  # 将音频编码为 AAC
+                "-strict",
+                "experimental",
+                "-map",
+                "0:v:0",  # 使用第一个视频流
+                "-map",
+                "1:a:0",  # 使用第二个音频流
+                "-y",  # 覆盖已存在的文件
+                str(输出路径),
+            ]
+
+            self.logger.info("开始合并视频和音频")
+            subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+            self.logger.info("视频合并完成")
+
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"合并失败: {e.stderr.decode()}")
+            raise RuntimeError("视频合并失败") from e
