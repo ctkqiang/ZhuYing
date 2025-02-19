@@ -1,46 +1,185 @@
+# -*- coding: UTF-8 -*-
+
 import os
 import time
+import re
+import jieba
 import whisper
-import moviepy.editor as mp
-import ffmpeg
+import tempfile
+import logging
+import subprocess
+from typing import Optional, Tuple
+from pathlib import Path
+import speech_recognition as sr
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("log/video_processing.log"), logging.StreamHandler()],
+)
 
 
-class VideoProcessing:
-    """视频处理类，用于视频转录功能"""
+class 视频处理器:
+    """
+    视频处理核心类，提供专业级音频提取和转录功能
 
-    def __init__(self, video_path: str, language: str = "zh") -> None:
-        """
-        初始化视频处理类
-        参数:
-            video_path: 视频文件路径
-            language: 转录语言，默认为中文
-        """
-        super(VideoProcessing, self).__init__()
+    特性：
+    - 安全的临时文件管理
+    - 音频格式自动检测
+    - 多重重试机制
+    - 详细的错误处理
+    - 进度回调支持
+    """
 
-        self.video_path = video_path
-        self.language = language
-        # 初始化Whisper模型，使用base模型以平衡性能和准确度
+    def __init__(
+        self,
+        视频路径: str,
+        语言: str = "zh-CN",
+        采样率: int = 16000,
+        最大重试次数: int = 3,
+        日志器: Optional[logging.Logger] = None,
+    ) -> None:
+        self.视频路径 = Path(视频路径)
+        self.语言 = 语言
+        self.采样率 = 采样率
+        self.最大重试次数 = 最大重试次数
+        self.logger = 日志器 or logging.getLogger(__name__)
+
         self.model = whisper.load_model("base")
+        self.logger.info("Whisper模型加载完成")
 
-    def transcribe_video(self, video_path) -> str:
-        # 设置临时音频文件路径
-        audio_path = "../temp/temp_audio.wav"
+        self.输出目录 = Path(__file__).parent.parent / "output/temp"
+        self.输出目录.mkdir(parents=True, exist_ok=True)
+
+        if not self.视频路径.exists():
+            raise FileNotFoundError(f"视频文件不存在: {self.视频路径}")
+
+        if not self.视频路径.is_file():
+            raise ValueError(f"路径不是文件: {self.视频路径}")
+
+    def 美化中文(self, 文本: str) -> str:
+        """
+        美化中文文本格式
+
+        处理步骤:
+        1. 规范化空格
+        2. 添加适当的标点符号
+        3. 分词优化
+        """
+
+        文本 = re.sub(r"\s+", "", 文本)
+        文本 = re.sub(r"([。！？])", r"\1\n", 文本)
+        分词文本 = " ".join(jieba.cut(文本))
+
+        return 分词文本
+
+    def 提取音频(
+        self, 输出路径: Optional[Path] = None, 进度回调: Optional[callable] = None
+    ) -> Path:
+        音频路径 = 输出路径 or (self.输出目录 / f"audio_{int(time.time())}.wav")
 
         try:
-            # 使用ffmpeg从视频提取音频文件
-            ffmpeg.input(video_path).output(audio_path).run(overwrite_output=True)
+            # 配置 ffmpeg 命令参数
+            ffmpeg_cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(self.视频路径),
+                "-vn",
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                str(self.采样率),
+                "-ac",
+                "1",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                str(音频路径),
+            ]
 
-            # 使用Whisper模型进行音频转录
-            result = self.model.transcribe(
-                audio_path, language=self.language, task="transcribe"
+            self.logger.info(f"开始提取音频: {self.视频路径.name}")
+
+            # 启动 ffmpeg 进程
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
             )
 
-            return result["text"]
+            # 监控处理进度
+            while True:
+                output = process.stdout.readline()
+                if output == "" and process.poll() is not None:
+                    break
+                if output and "frame=" in output and 进度回调:
+                    进度回调(output)
+
+            # 检查处理结果
+            if process.returncode != 0:
+                raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
+
+            self.logger.info(f"成功生成音频文件: {音频路径}")
+            return 音频路径
+
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"音频提取失败: {e}")
+            if 音频路径.exists():
+                音频路径.unlink()
+            raise
         except Exception as e:
-            print(f"转录失败: {str(e)}")
-            return ""
+            self.logger.error(f"未知错误: {str(e)}", exc_info=True)
+            if 音频路径.exists():
+                音频路径.unlink()
+            raise
+
+        成功, 转录结果 = self.转录音频(音频路径)
+        if 成功:
+            self.logger.info(f"转录结果: {转录结果}")
+            print(f"转录结果: {转录结果}")
+        else:
+            self.logger.warning("音频转录失败")
+
+    def 转录音频(self, 音频路径: Path, 重试: int = 0) -> Tuple[bool, str]:
+        try:
+            # 使用 Whisper 进行转录
+            result = self.model.transcribe(
+                str(音频路径), language=self.语音, task="transcribe"
+            )
+
+            if result["text"]:
+                return True, result["text"]
+            return False, ""
+
+        except Exception as e:
+            if 重试 < self.最大重试次数:
+                self.logger.warning(
+                    f"转录失败，正在重试 ({重试+1}/{self.最大重试次数})"
+                )
+                return self.转录音频(音频路径, 重试 + 1)
+            self.logger.error(f"转录失败: {str(e)}")
+            return False, ""
+
+    def 执行转录(self, 保留音频: bool = False) -> str:
+        try:
+            音频文件 = self.输出目录 / f"audio_{int(time.time())}.wav"
+            音频路径 = self.提取音频(音频文件)
+            成功, 结果 = self.转录音频(音频路径)
+
+            if not 成功:
+                raise RuntimeError("语音识别失败")
+
+            美化结果: str = self.美化中文(文本=结果)
+
+            self.logger.info(f"[v] 转录结果: {美化结果}")
+
+            return 美化结果
         finally:
-            # 确保临时文件被删除
-            if os.path.exists(audio_path):
-                os.remove(audio_path)
-            video.close()
+            if not 保留音频 and 音频文件.exists():
+                try:
+                    音频文件.unlink()
+                    self.logger.info("[v] 已清理临时音频文件")
+                except Exception as e:
+                    self.logger.warning(f"[x] 清理文件失败: {str(e)}")

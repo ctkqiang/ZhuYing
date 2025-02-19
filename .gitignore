@@ -114,3 +114,7 @@ dmypy.json
 
 # Temporary files
 *.tmp
+
+*.log
+*.mp4
+*.wav
