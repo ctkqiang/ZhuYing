@@ -116,5 +116,5 @@ dmypy.json
 *.tmp
 
 *.log
-*.mp4
 *.wav
+/output
