@@ -35,7 +35,7 @@ class 视频处理器:
     def __init__(
         self,
         视频路径: str,
-        语言: str = "zh-CN",
+        语言: str = "zh",
         采样率: int = 16000,
         最大重试次数: int = 3,
         日志器: Optional[logging.Logger] = None,
@@ -146,7 +146,9 @@ class 视频处理器:
         try:
             # 使用 Whisper 进行转录
             result = self.model.transcribe(
-                str(音频路径), language=self.语音, task="transcribe"
+                str(音频路径),
+                language=self.语言,
+                task="transcribe",
             )
 
             if result["text"]:
