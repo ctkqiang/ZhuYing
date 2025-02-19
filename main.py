@@ -1,6 +1,8 @@
 # -*- coding: UTF-8 -*-
+
 import os
 import cv2
+import sv_ttk
 import threading
 import tkinter as tk
 from tkinter import ttk
@@ -8,6 +10,7 @@ from tkinter import filedialog
 from typing import Tuple, Optional
 from tkinter import messagebox
 from PIL import Image, ImageTk
+from src.translator import 翻译器
 from src.video_processing import 视频处理器
 from src.database_handler import 数据库处理器
 
@@ -23,12 +26,19 @@ class 竹影:
         self.作者邮箱: str = "johnmelodymel@qq.com"
         self.作者网址: str = "https://ctkqiang.xin"
         self.描述: str = "竹影"
+        self.默认语言: str = "zh"
+        self.支持语言: list = ["zh", "en", "de", "fr", "ru", "ko", "ja"]
 
         # 初始化主窗口和组件
         self.根窗口: tk.Tk = tk.Tk()
         self.文件名输入框: Optional[ttk.Entry] = None
 
-        self.视频处理器 = None
+        self.翻译器实例 = 翻译器()
+
+        # 初始化数据库和视频处理器
+        self.数据库: 数据库处理器 = 数据库处理器()
+        self.数据库.创建表()
+        self.视频处理器: Optional[视频处理器] = None
 
         # 设置窗口标题和图标
         self.根窗口.title(f"{self.名称} v{self.版本} - 视频转录工具")
@@ -44,6 +54,7 @@ class 竹影:
                     self.根窗口.iconbitmap(icon_path)
         except Exception as e:
             print(f"无法加载图标: {e}")
+
         self.根窗口.geometry("1400x1000")
         self.根窗口.minsize(1200, 600)
 
@@ -225,21 +236,45 @@ class 竹影:
         self.转录文本: tk.Text = tk.Text(转录框架, height=10, font=(None, 20))
         self.转录文本.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Add transcribe button
         转录按钮: ttk.Button = ttk.Button(
             转录框架, text="开始转录", command=self.开始转录, width=15
         )
         转录按钮.pack(side=tk.BOTTOM, pady=5)
 
+        # 输出区域和语言选择
+        输出控制框架: ttk.Frame = ttk.Frame(主框架)
+        输出控制框架.pack(fill=tk.X, pady=(0, 5))
+
+        语言标签: ttk.Label = ttk.Label(输出控制框架, text="转录语言:")
+        语言标签.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.语言选择: ttk.Combobox = ttk.Combobox(
+            输出控制框架,
+            values=self.支持语言,
+            state="readonly",
+            width=10,
+        )
+        self.语言选择.set(self.默认语言)
+        self.语言选择.pack(side=tk.LEFT)
+
+        self.语言选择.bind("<<ComboboxSelected>>", 竹影.语言变更处理)
+
+        翻译按钮: ttk.Button = ttk.Button(
+            输出控制框架, text="翻译", command=self.执行翻译, width=8
+        )
+        翻译按钮.pack(side=tk.LEFT, padx=(5, 0))
+
         输出框架: ttk.LabelFrame = ttk.LabelFrame(主框架, text="输出")
         输出框架.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        输出文本: tk.Text = tk.Text(输出框架, height=8)
-        输出文本.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.输出文本: tk.Text = tk.Text(输出框架, height=8)
+        self.输出文本.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         按钮框架: ttk.Frame = ttk.Frame(主框架)
         按钮框架.pack(fill=tk.X)
 
-        导出按钮: ttk.Button = ttk.Button(按钮框架, text="导出", width=15)
+        导出按钮: ttk.Button = ttk.Button(
+            按钮框架, text="导出", width=15, command=self.执行翻译
+        )
         导出按钮.pack(side=tk.LEFT, padx=(0, 5), pady=5)
 
         重置按钮: ttk.Button = ttk.Button(按钮框架, text="重置", width=15)
@@ -247,10 +282,51 @@ class 竹影:
 
         return self.根窗口.mainloop()
 
+    def 保存翻译结果(self, 文本: str, 源语言: str, 目标语言: str) -> None:
+        try:
+            # 创建输出目录
+            输出目录 = "../output/translated"
+            os.makedirs(输出目录, exist_ok=True)
+
+            # 生成文件名
+            文件名 = f"{os.path.splitext(os.path.basename(self.当前视频))[0]}_{源语言}_to_{目标语言}.txt"
+            文件路径 = os.path.join(输出目录, 文件名)
+
+            # 保存翻译结果
+            with open(文件路径, "w", encoding="utf-8") as f:
+                f.write(文本)
+
+            messagebox.showinfo("成功", f"翻译结果已保存至：\n{文件路径}")
+        except Exception as e:
+            messagebox.showerror("错误", f"保存失败：{str(e)}")
+
+    def 执行翻译(self) -> None:
+        if not hasattr(self, "当前视频"):
+            messagebox.showwarning("警告", "请先选择视频文件")
+            return
+
+        源文本 = self.转录文本.get("1.0", tk.END).strip()
+
+        if not 源文本:
+            messagebox.showwarning("警告", "没有可翻译的内容")
+            return
+
+        try:
+            目标语言 = self.语言选择.get()
+            # 修改翻译方法调用
+            翻译结果 = 翻译器.翻译(
+                self.翻译器实例, 文本=源文本, 源语言="zh", 目标语言=目标语言
+            )
+            self.输出文本.delete("1.0", tk.END)
+            self.输出文本.insert(tk.END, 翻译结果)
+            self.保存翻译结果(翻译结果, "zh", 目标语言)
+        except Exception as e:
+            messagebox.showerror("错误", f"翻译失败：{str(e)}")
+
     def 播放视频(self, 视频路径: str) -> None:
         self.视频捕获 = cv2.VideoCapture(视频路径)
 
-        def 更新帧():
+        def 更新帧() -> None:
             while True and hasattr(self, "正在播放") and self.正在播放:
                 ret, frame = self.视频捕获.read()
                 if ret:
@@ -277,6 +353,10 @@ class 竹影:
             self.播放按钮.configure(text="暂停")
             if hasattr(self, "当前视频"):
                 self.播放视频(self.当前视频)
+
+    @staticmethod
+    def 语言变更处理(事件: str) -> None:
+        print(f"已切换语言: {事件.widget.get()}")
 
     def 停止视频(self) -> None:
         try:

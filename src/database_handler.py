@@ -2,9 +2,21 @@
 
 import sqlite3
 
+import os
+from pathlib import Path
+
 
 class 数据库处理器:
-    def __init__(self, 数据库路径: str = "../database/竹影.sqlite"):
+    def __init__(self, 数据库路径: str = None) -> None:
+        if 数据库路径 is None:
+            # 获取项目根目录
+            项目根目录 = Path(__file__).parent.parent
+            # 创建数据库目录
+            数据库目录 = 项目根目录 / "database"
+            数据库目录.mkdir(parents=True, exist_ok=True)
+            # 设置数据库文件路径
+            数据库路径 = str(数据库目录 / "竹影.sqlite")
+
         self.数据库 = sqlite3.connect(数据库路径)
         self.游标 = self.数据库.cursor()
         self.表名: str = "视频"
@@ -24,6 +36,7 @@ class 数据库处理器:
             self.数据库.commit()
             return 1
         except sqlite3.Error as e:
+            print(f"创建表失败: {e}")
             return 0
         finally:
             self.游标.close()
