@@ -3,7 +3,7 @@
 ## 简介
 竹影是一款创新的视频语音转录与翻译工具，专注于提供高质量的视频音频转文字服务和多语言翻译功能。本项目采用先进的人工智能技术，为用户提供便捷的视频内容处理解决方案。
 
-作为一名充满热情的开发者，我致力于为开源社区贡献力量。如果您觉得这个项目对您有帮助，请考虑通过以下方式支持我的工作：
+一名充满热情的开发者，我致力于为开源社区贡献力量。如果您觉得这个项目对您有帮助，请考虑通过以下方式支持我的工作：
 
 - 💼 **招聘机会**：我正在寻找全职开发岗位，擅长 Python、人工智能和音视频处理
 - 🎁 **项目赞助**：
@@ -70,20 +70,13 @@ python3 main.py
 
 ### 演示
 
-<div align="center" style="margin: 20px 0">
-    <iframe 
-        src="//player.bilibili.com/player.html?isOutside=true&aid=114031868252105&bvid=BV1hqAjeYEJG&cid=28478998743&p=1" 
-        scrolling="no" 
-        border="0" 
-        frameborder="no" 
-        framespacing="0" 
-        allowfullscreen="true"
-        width="800"
-        height="600">
-    </iframe>
+<div align="center">
+    <a href="https://www.bilibili.com/video/BV1hqAjeYEJG">
+        <img src="assets/截屏2025-02-20 上午1.42.06.png" alt="竹影演示视频" width="800">
+    </a>
 </div>
 
-> 🎬 [在 Bilibili 观看完整视频](https://www.bilibili.com/video/BV1hqAjeYEJG)
+📺 [在 Bilibili 观看完整视频](https://www.bilibili.com/video/BV1hqAjeYEJG)
 
 
 ## 技术细节
