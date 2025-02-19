@@ -1,0 +1,85 @@
+@startuml 竹影工作流程
+
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+
+actor 用户
+participant "主界面\n(竹影)" as UI
+participant "视频处理器" as VideoProcessor
+participant "翻译器" as Translator
+participant "数据库处理器" as DB
+participant "Whisper模型" as Whisper
+participant "Google翻译" as GoogleTranslate
+participant "FFmpeg" as FFmpeg
+
+box "文件系统" #LightBlue
+    participant "输入视频" as InputVideo
+    participant "临时文件" as TempFiles
+    participant "输出文件" as OutputFiles
+end box
+
+== 初始化 ==
+用户 -> UI: 启动应用
+activate UI
+UI -> DB: 初始化数据库
+activate DB
+DB --> UI: 数据库就绪
+deactivate DB
+
+== 视频选择与加载 ==
+用户 -> UI: 选择视频文件
+UI -> InputVideo: 读取视频
+InputVideo --> UI: 返回视频路径
+UI -> VideoProcessor: 创建视频处理器实例
+activate VideoProcessor
+VideoProcessor -> UI: 显示视频预览
+deactivate VideoProcessor
+
+== 音频转录流程 ==
+用户 -> UI: 点击"开始转录"
+UI -> VideoProcessor: 调用提取音频
+activate VideoProcessor
+VideoProcessor -> FFmpeg: 提取音频
+FFmpeg -> TempFiles: 保存临时音频文件
+TempFiles --> VideoProcessor: 返回音频路径
+
+VideoProcessor -> Whisper: 加载模型
+activate Whisper
+Whisper --> VideoProcessor: 模型就绪
+VideoProcessor -> Whisper: 执行转录
+Whisper -> VideoProcessor: 返回转录文本
+deactivate Whisper
+
+VideoProcessor --> UI: 返回转录结果
+deactivate VideoProcessor
+UI -> DB: 保存转录结果
+activate DB
+DB --> UI: 保存完成
+deactivate DB
+
+== 翻译流程 ==
+用户 -> UI: 选择目标语言
+用户 -> UI: 点击"翻译"
+UI -> Translator: 调用翻译
+activate Translator
+Translator -> GoogleTranslate: 发送翻译请求
+GoogleTranslate --> Translator: 返回翻译结果
+Translator --> UI: 显示翻译结果
+deactivate Translator
+
+== 导出流程 ==
+用户 -> UI: 点击"导出"
+UI -> VideoProcessor: 调用文本转语音
+activate VideoProcessor
+VideoProcessor -> TempFiles: 生成语音文件
+TempFiles --> VideoProcessor: 返回音频路径
+
+VideoProcessor -> FFmpeg: 合并视频和音频
+FFmpeg -> OutputFiles: 生成最终视频
+OutputFiles --> VideoProcessor: 返回输出路径
+VideoProcessor --> UI: 导出完成
+deactivate VideoProcessor
+
+UI -> 用户: 显示成功消息
+
+@enduml
