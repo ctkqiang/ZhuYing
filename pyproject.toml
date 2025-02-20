@@ -1,0 +1,27 @@
+[tool.briefcase]
+project_name = "竹影"
+version = "1.0.0"
+bundle = "com.钟智强"
+author = "钟智强"
+
+[tool.briefcase.app.zhuying]
+formal_name = "竹影"
+description = "Video Transcription and Translation Tool"
+sources = ["src", "main.py"]
+requires = [
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+    "sv-ttk>=2.5.0",
+    "ffmpeg-python>=0.2.0",
+    "openai-whisper>=20230918",
+    "moviepy>=1.0.3",
+    "gTTS>=2.3.2",
+    "googletrans>=3.1.0a0",
+    "jieba>=0.42.1",
+    "numpy>=1.24.0",
+    "torch>=2.0.0",
+    "tqdm>=4.65.0"
+]
+
+[tool.briefcase.app.zhuying.macOS]
+requires = []

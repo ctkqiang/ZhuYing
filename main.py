@@ -366,7 +366,7 @@ class 竹影:
                 return
 
             # 显示进度条
-            self.进度条["value"] = 0
+
             self.状态标签["text"] = "正在翻译..."
             self.根窗口.update()
 
