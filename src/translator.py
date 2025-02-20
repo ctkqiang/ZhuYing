@@ -25,7 +25,6 @@ class 翻译器:
             self.模型[模型代码] = MarianMTModel.from_pretrained(模型代码)
             self.分词器[模型代码] = MarianTokenizer.from_pretrained(模型代码)
 
-    @staticmethod
     def 翻译(self, 文本: str, 源语言: str, 目标语言: str) -> str:
         try:
             模型代码 = self._获取模型代码(源语言, 目标语言)

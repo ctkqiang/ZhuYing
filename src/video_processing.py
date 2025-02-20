@@ -13,6 +13,7 @@ from typing import Optional, Tuple
 from pathlib import Path
 from gtts import gTTS
 
+os.makedirs("log", exist_ok=True)
 
 # 配置日志
 logging.basicConfig(
@@ -143,6 +144,14 @@ class 视频处理器:
             print(f"转录结果: {转录结果}")
         else:
             self.logger.warning("音频转录失败")
+
+    def 检测语言(self, 音频路径: str) -> str:
+        try:
+            结果 = self.model.transcribe(音频路径)
+            return 结果.get("language", "en")
+        except Exception as e:
+            print(f"语言检测失败: {e}")
+            return "en"
 
     def 转录音频(self, 音频路径: Path, 重试: int = 0) -> Tuple[bool, str]:
         try:

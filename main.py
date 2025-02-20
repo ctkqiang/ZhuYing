@@ -70,6 +70,7 @@ class 竹影:
         # 添加文件菜单到菜单栏
 
         self.菜单栏.add_cascade(label="文件", menu=文件菜单)
+
         # 添加文件菜单项
         文件菜单.add_command(label="打开文件", command=self.选择文件)
         文件菜单.add_separator()  # 添加分隔线
@@ -356,12 +357,18 @@ class 竹影:
             return
 
         try:
+            目标语言 = self.语言选择.get()
+
+            if 目标语言 == "zh":
+                self.输出文本.delete("1.0", tk.END)
+                self.输出文本.insert(tk.END, 源文本)
+                self.保存翻译结果(源文本, "zh", "zh")
+                return
+
             # 显示进度条
             self.进度条["value"] = 0
             self.状态标签["text"] = "正在翻译..."
             self.根窗口.update()
-
-            目标语言 = self.语言选择.get()
 
             # 更新进度
             self.进度条["value"] = 30
@@ -369,9 +376,7 @@ class 竹影:
             self.根窗口.update()
 
             # 执行翻译
-            翻译结果 = 翻译器.翻译(
-                self.翻译器实例, 文本=源文本, 源语言="zh", 目标语言=目标语言
-            )
+            翻译结果 = self.翻译器实例.翻译(文本=源文本, 源语言="zh", 目标语言=目标语言)
 
             # 更新进度
             self.进度条["value"] = 70
@@ -467,7 +472,6 @@ class 竹影:
             self.转录文本.insert(tk.END, "正在转录中...\n")
             self.转录文本.update()
 
-            # Reset progress bar
             self.进度条["value"] = 0
             self.状态标签["text"] = "正在准备转录..."
 
@@ -480,6 +484,11 @@ class 竹影:
                 try:
                     更新进度("正在提取音频", 10)
                     音频路径 = self.视频处理器.提取音频()
+
+                    更新进度("正在检测语言", 20)
+                    检测语言 = self.检测语言(音频路径)
+                    # 更新视频处理器的语言设置
+                    self.视频处理器.语言 = 检测语言
 
                     更新进度("正在加载模型", 30)
                     更新进度("正在转录音频", 50)
@@ -644,6 +653,143 @@ class 竹影:
                 try:
                     更新进度("正在提取音频", 10)
                     音频路径 = self.视频处理器.提取音频()
+
+                    更新进度("正在检测语言", 20)
+                    检测语言 = self.检测语言(音频路径)
+
+                    更新进度("正在加载模型", 30)
+                    更新进度("正在转录音频", 50)
+                    结果 = self.视频处理器.执行转录(保留音频=False)
+
+                    更新进度("处理完成", 100)
+                    self.根窗口.after(0, self.更新转录结果, 结果)
+
+                except Exception as e:
+                    self.根窗口.after(0, self.显示错误, str(e))
+
+            threading.Thread(target=执行转录任务, daemon=True).start()
+
+        except Exception as e:
+            messagebox.showerror("错误", f"转录失败: {str(e)}")
+
+    def 更新转录结果(self, 结果: str) -> None:
+        """更新转录结果到界面"""
+        self.转录文本.delete("1.0", tk.END)
+        self.转录文本.insert(tk.END, 结果)
+
+    def 显示错误(self, 错误信息: str) -> None:
+        """显示错误信息"""
+        self.转录文本.delete("1.0", tk.END)
+        self.转录文本.insert(tk.END, f"转录失败: {错误信息}")
+
+    def 检测语言(self, 音频路径: str) -> str:
+        """检测音频语言"""
+        try:
+            self.状态标签["text"] = "正在检测语言..."
+            self.根窗口.update()
+
+            检测结果 = self.视频处理器.检测语言(音频路径)
+
+            if 检测结果 in self.支持语言:
+                self.语言选择.set(检测结果)
+                return 检测结果
+            else:
+                return self.默认语言
+
+        except Exception as e:
+            print(f"语言检测失败: {e}")
+            return self.默认语言
+
+    def 播放视频(self, 视频路径: str) -> None:
+        self.视频捕获 = cv2.VideoCapture(视频路径)
+
+        def 更新帧() -> None:
+            while True and hasattr(self, "正在播放") and self.正在播放:
+                ret, frame = self.视频捕获.read()
+                if ret:
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame_rgb = cv2.resize(frame_rgb, (270, 480))
+                    photo = ImageTk.PhotoImage(image=Image.fromarray(frame_rgb))
+                    self.视频标签.configure(image=photo)
+                    self.视频标签.image = photo
+                    self.根窗口.after(30)
+                else:
+                    self.视频捕获.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+        self.视频线程 = threading.Thread(target=更新帧, daemon=True)
+        self.视频线程.start()
+
+    def 切换播放(self) -> None:
+        if hasattr(self, "正在播放") and self.正在播放:
+            self.正在播放 = False
+            self.播放按钮.configure(text="播放")
+            if hasattr(self, "视频捕获"):
+                self.视频捕获.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset video position
+        else:
+            self.正在播放 = True
+            self.播放按钮.configure(text="暂停")
+            if hasattr(self, "当前视频"):
+                self.播放视频(self.当前视频)
+
+    @staticmethod
+    def 语言变更处理(事件: str) -> None:
+        print(f"已切换语言: {事件.widget.get()}")
+
+    def 停止视频(self) -> None:
+        try:
+            self.正在播放 = False
+            if hasattr(self, "视频捕获") and self.视频捕获 is not None:
+                self.视频捕获.release()
+                self.视频捕获 = None
+            if hasattr(self, "当前视频"):
+                self.显示视频缩略图(self.当前视频)
+            self.播放按钮.configure(text="播放")
+        except Exception as e:
+            print(f"Error stopping video: {e}")
+
+    def 显示视频缩略图(self, 视频路径: str) -> None:
+        # 获取视频第一帧作为缩略图
+        cap = cv2.VideoCapture(视频路径)
+        ret, frame = cap.read()
+
+        if ret:
+            # 转换并调整图像大小为垂直格式
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cv2.resize(frame_rgb, (270, 480))  # 调整为更小的固定尺寸
+            photo = ImageTk.PhotoImage(image=Image.fromarray(frame_rgb))
+
+            # 显示缩略图
+            self.视频标签.configure(image=photo)
+            self.视频标签.image = photo
+        cap.release()
+
+    def 开始转录(self) -> None:
+        """执行视频转录"""
+        if not hasattr(self, "当前视频") or not self.当前视频:
+            messagebox.showwarning("警告", "请先选择视频文件")
+            return
+
+        try:
+            self.转录文本.delete("1.0", tk.END)
+            self.转录文本.insert(tk.END, "正在转录中...\n")
+            self.转录文本.update()
+
+            # Reset progress bar
+            self.进度条["value"] = 0
+            self.状态标签["text"] = "正在准备转录..."
+
+            def 更新进度(阶段: str, 进度: int):
+                self.进度条["value"] = 进度
+                self.状态标签["text"] = f"{阶段} - {进度}%"
+                self.根窗口.update()
+
+            def 执行转录任务():
+                try:
+                    更新进度("正在提取音频", 10)
+                    音频路径 = self.视频处理器.提取音频()
+
+                    更新进度("正在检测语言", 20)
+                    检测语言 = self.检测语言(音频路径)
 
                     更新进度("正在加载模型", 30)
                     更新进度("正在转录音频", 50)
