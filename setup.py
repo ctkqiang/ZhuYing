@@ -1,24 +1,38 @@
 from setuptools import setup
 
+APP = ["main.py"]
+DATA_FILES = [
+    ("assets", ["assets/icon.png"]),
+    (
+        "src",
+        ["src/translator.py", "src/video_processing.py", "src/database_handler.py"],
+    ),
+]
+OPTIONS = {
+    "argv_emulation": False,
+    "packages": ["cv2", "sv_ttk", "PIL", "tkinter"],
+    "includes": ["PIL", "cv2", "sv_ttk", "tkinter", "threading"],
+    "excludes": ["matplotlib", "numpy", "pandas"],
+    "iconfile": "assets/icon.icns",
+    "plist": {
+        "CFBundleName": "ZhuYing",
+        "CFBundleDisplayName": "ZhuYing",
+        "CFBundleGetInfoString": "Video Transcription Tool",
+        "CFBundleVersion": "1.0.0",
+        "CFBundleShortVersionString": "1.0.0",
+    },
+    "resources": ["assets", "src"],
+    "site_packages": True,
+    "optimize": 2,
+    "arch": "x86_64",
+    "strip": False,
+    "prefer_ppc": False,
+}
+
 setup(
-    name="竹影",
-    app=['main.py'],
-    version='1.0.0',
-    setup_requires=['py2app'],
-    options={
-        'py2app': {
-            'argv_emulation': True,
-            'packages': ['PIL', 'numpy', 'cv2', 'torch', 'whisper'],
-            'includes': ['tkinter'],
-            'resources': ['assets'],
-            'iconfile': 'assets/icon.icns',
-            'plist': {
-                'CFBundleName': "竹影",
-                'CFBundleDisplayName': "竹影",
-                'CFBundleIdentifier': "com.钟智强.竹影",
-                'CFBundleVersion': "1.0.0",
-                'CFBundleShortVersionString': "1.0.0",
-            }
-        }
-    }
+    app=APP,
+    name="ZhuYing",
+    data_files=DATA_FILES,
+    options={"py2app": OPTIONS},
+    setup_requires=["py2app"],
 )

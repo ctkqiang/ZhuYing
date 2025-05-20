@@ -2,10 +2,10 @@
 
 import os
 import cv2
-import sv_ttk
 import threading
 import tkinter as tk
-from tkinter import ttk
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 from tkinter import filedialog
 from typing import Tuple, Optional
 from tkinter import messagebox
